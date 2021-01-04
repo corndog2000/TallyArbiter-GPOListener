@@ -1,3 +1,5 @@
+# Based on [Joseph Adams' Tally Arbiter GPO Listener](https://github.com/josephdadams/TallyArbiter-GPOListener). Modified for use with Neopixel strips.
+
 # Tally Arbiter GPO Listener
 Tally Arbiter GPO Listener was written by Joseph Adams and is distributed under the MIT License.
 

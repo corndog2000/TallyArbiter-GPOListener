@@ -11,6 +11,18 @@ import json
 import atexit
 import RPi.GPIO as GPIO
 
+import board
+import neopixel
+
+LED_COUNT = 15	#Number of Neopixel LEDs
+LED_PIN = board.D18	#GPIO Pin
+LED_BRIGHTNESS = 1.0 	#LED Brightness
+LED_ORDER = neopixel.GRB	# order of LED colours. May also be RGB, GRBW, or RGBW
+
+pixels = neopixel.NeoPixel(LED_PIN, LED_COUNT, brightness = LED_BRIGHTNESS, auto_write=False, pixel_order = LED_ORDER)
+
+pixel_states = [(255,0,0), (0,255,0), (0,0,0)]
+
 if len(sys.argv) > 1:
 	configFileName = sys.argv[1]
 else:
@@ -22,15 +34,36 @@ gpo_groups = []
 device_states = []
 bus_options = []
 
+def setNeopixels(group, redval, greenval, blueval):
+	print('*************** Function Arguments: ', group, redval, greenval, blueval)
+
+	if group == 0:
+		for i in range(LED_COUNT):
+			print('LED: ', i)
+			pixels[i] = (redval, greenval, blueval)
+	elif group == 1:
+		for i in range(LED_COUNT):
+			if (i % 2 == 0):
+				print('LED: ', i)
+				pixels[i] = (redval, greenval, blueval)
+	elif group == 2:
+		for i in range(LED_COUNT):
+			if (i % 2 != 0):
+				print('LED: ', i)
+				pixels[i] = (redval, greenval, blueval)
+	pixels.show()
+
+
 def setStates():
 	GPIO.setmode(GPIO.BCM)
 	GPIO.setwarnings(False)
 
 	for gpo_group in gpo_groups:
 		for gpo in gpo_group['gpos']:
-			GPIO.setup(gpo['pinNumber'], GPIO.OUT)
-			GPIO.output(gpo['pinNumber'], False)
-			gpo['state'] = False
+			#GPIO.setup(gpo['pinNumber'], GPIO.OUT)
+			#GPIO.output(gpo['pinNumber'], False)
+			setNeopixels(gpo['pinNumber'], (*(gpo['state'])))
+			gpo['state'] = (0,0,0)
 	
 	atexit.register(GPO_off)
 
@@ -38,9 +71,10 @@ def GPO_off():
 	print('Setting all GPOs to low before exiting.')
 	for gpo_group in gpo_groups:
 		for gpo in gpo_group['gpos']:
-			GPIO.setup(gpo['pinNumber'], GPIO.OUT)
-			GPIO.output(gpo['pinNumber'], False)
-			gpo['state'] = False
+			#GPIO.setup(gpo['pinNumber'], GPIO.OUT)
+			#GPIO.output(gpo['pinNumber'], False)
+			setNeopixels(gpo['pinNumber'], (*(gpo['state'])))
+			gpo['state'] = (0,0,0)
 
 #SocketIO Connections
 sio = socketio.Client()
@@ -81,7 +115,17 @@ def on_flash(gpoGroupId):
 	for gpo_group in gpo_groups:
 		if gpo_group['id'] == gpoGroupId:
 			for gpo in gpo_group['gpos']:
-				GPIO.output(gpo['pinNumber'], True)
+				print('Flashing group: ', gpo)
+				setNeopixels(gpo['pinNumber'], (*(255, 255, 255)))
+				time.sleep(0.5)
+				setNeopixels(gpo['pinNumber'], (*(0,0,0)))
+				time.sleep(0.5)
+				setNeopixels(gpo['pinNumber'], (*(255, 255, 255)))
+				time.sleep(0.5)
+				setNeopixels(gpo['pinNumber'], (*(0,0,0)))
+				time.sleep(0.5)
+				setNeopixels(gpo['pinNumber'], (*(gpo['state'])))
+				"""GPIO.output(gpo['pinNumber'], True)
 				time.sleep(.5)
 				GPIO.output(gpo['pinNumber'], False)
 				time.sleep(.5)
@@ -89,7 +133,7 @@ def on_flash(gpoGroupId):
 				time.sleep(.5)
 				GPIO.output(gpo['pinNumber'], False)
 				time.sleep(.5)
-				GPIO.output(gpo['pinNumber'], gpo['state'])
+				GPIO.output(gpo['pinNumber'], gpo['state'])"""
 
 @sio.on('reassign')
 def on_reassign(gpoGroupId, oldDeviceId, newDeviceId):
@@ -116,24 +160,25 @@ def processTallyData():
 		if getBusTypeById(device_state['busId']) == 'preview':
 			if len(device_state['sources']) > 0:
 				print('Updating GPO: {} is in preview'.format(device_state['deviceId']))
-				UpdateGPO(device_state['deviceId'], 'preview', True)
+				UpdateGPO(device_state['deviceId'], 'preview', (0, 255, 0))
 			else:
 				print('Updating GPO: {} is NOT in preview'.format(device_state['deviceId']))
-				UpdateGPO(device_state['deviceId'], 'preview', False)
+				UpdateGPO(device_state['deviceId'], 'preview', (0,0,0))
 		elif getBusTypeById(device_state['busId']) == 'program':
 			if len(device_state['sources']) > 0:
 				print('Updating GPO: {} is in program'.format(device_state['deviceId']))
-				UpdateGPO(device_state['deviceId'], 'program', True)
+				UpdateGPO(device_state['deviceId'], 'program', (255, 0, 0))
 			else:
 				print('Updating GPO: {} is NOT in program'.format(device_state['deviceId']))
-				UpdateGPO(device_state['deviceId'], 'program', False)
+				UpdateGPO(device_state['deviceId'], 'program', (0, 0, 0))
 
 def UpdateGPO(deviceId, bus, value):
 	for gpo_group in gpo_groups:
 		if gpo_group['deviceId'] == deviceId:
 			for gpo in gpo_group['gpos']:
 				if gpo['busType'] == bus:
-					if value == True:
+					setNeopixels(gpo['pinNumber'], (*(value)))
+					"""if value == True:
 						# turn the pin high
 						print('Taking GPIO Pin {} High'.format(gpo['pinNumber']))
 						GPIO.output(gpo['pinNumber'], True)
@@ -142,7 +187,7 @@ def UpdateGPO(deviceId, bus, value):
 						# turn the pin low
 						print('Taking GPIO Pin {} Low'.format(gpo['pinNumber']))
 						GPIO.output(gpo['pinNumber'], False)
-						gpo['state'] = False
+						gpo['state'] = False"""
 
 try:
 	config_file = open(configFileName)
@@ -152,6 +197,12 @@ try:
 		configJson = json.loads(config)
 		server_config = configJson['server_config']
 		gpo_groups = configJson['gpo_groups']
+
+		for gpo_group in gpo_groups:
+			for gpo in gpo_group['gpos']:
+				print('GPO printout: ', gpo)
+				gpo['state'] = eval(gpo['state'])
+				print('State: ', gpo['state'])
 	else:
 		print('Config data could not be loaded.')
 		exit (0)

@@ -8,33 +8,17 @@
             "id": "1",
             "gpos": [
                 {
-                    "pinNumber": 9,
+                    "pinNumber": 1,
                     "busType": "preview",
-                    "state": false
+                    "state": "(0,0,255)"
                 },
                 {
-                    "pinNumber": 10,
+                    "pinNumber": 2,
                     "busType": "program",
-                    "state": false
+                    "state": "(0,0,255)"
                 }
             ],
-            "deviceId": "8ec94eba"
-        },
-        {
-            "id": "2",
-            "gpos": [
-                {
-                    "pinNumber": 11,
-                    "busType": "preview",
-                    "state": false
-                },
-                {
-                    "pinNumber": 12,
-                    "busType": "program",
-                    "state": false
-                }
-            ],
-            "deviceId": "ed34bacd"
+            "deviceId": "e70d152a"
         }
     ]
 }
